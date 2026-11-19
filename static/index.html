@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SaveClip – Video & MP3 Downloader</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⬇️</text></svg>">
+<style>
+  :root {
+    --bg: #f6f7fb; --card: #ffffff; --text: #16181d; --muted: #6b7080;
+    --border: #e3e5ec; --accent: #e5254a; --accent-2: #ff6a3d; --soft: #fdeef1;
+    --ok: #18a058; --err: #d93636;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1115; --card: #181b22; --text: #eef0f4; --muted: #9aa0ae;
+      --border: #2a2e38; --soft: #2a1820; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 32px 16px 48px; }
+  header { text-align: center; margin-bottom: 24px; }
+  .logo { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo span { background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .tag { color: var(--muted); margin-top: 4px; }
+  .sites { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 12px; }
+  .sites span { font-size: 12px; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--muted); background: var(--card); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,.04); }
+  form { display: flex; gap: 8px; }
+  input[type=url] { flex: 1; min-width: 0; font-size: 16px; padding: 14px 14px;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--bg); color: var(--text); }
+  input[type=url]:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 12px; }
+  .btn { padding: 12px 18px; font-weight: 600; color: #fff;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+  .btn:disabled { opacity: .6; cursor: wait; }
+  .ghost { padding: 8px 12px; background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .row { display: flex; gap: 8px; margin-top: 10px; }
+  .msg { margin-top: 14px; padding: 12px 14px; border-radius: 10px; font-size: 14px; display: none; }
+  .msg.err { display: block; background: var(--soft); color: var(--err); }
+  .msg.info { display: block; background: var(--bg); color: var(--muted); }
+  .result { display: none; margin-top: 20px; }
+  .preview { display: flex; gap: 14px; align-items: flex-start; }
+  .thumb { width: 180px; aspect-ratio: 16/9; object-fit: cover; border-radius: 10px;
+    background: var(--bg); flex-shrink: 0; }
+  .title { font-weight: 700; font-size: 17px; word-break: break-word; }
+  .meta { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .tabs { display: flex; gap: 6px; margin: 18px 0 12px; background: var(--bg);
+    padding: 4px; border-radius: 12px; }
+  .tabs button { flex: 1; padding: 10px; background: transparent; color: var(--muted); font-weight: 600; }
+  .tabs button.active { background: var(--card); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+  .opt { padding: 12px; text-align: left; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); }
+  .opt b { display: block; }
+  .opt small { color: var(--muted); }
+  .opt:hover { border-color: var(--accent); }
+  .opt.busy { opacity: .6; pointer-events: none; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor;
+    border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite;
+    vertical-align: -2px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .how { margin-top: 24px; }
+  .how ol { padding-left: 20px; margin: 8px 0 0; color: var(--muted); }
+  footer { text-align: center; color: var(--muted); font-size: 13px; margin-top: 28px; }
+  @media (max-width: 520px) {
+    form { flex-direction: column; }
+    .preview { flex-direction: column; }
+    .thumb { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">Save<span>Clip</span></div>
+    <div class="tag">Download videos as MP4 or songs as MP3 from your favourite sites</div>
+    <div class="sites">
+      <span>YouTube</span><span>Instagram</span><span>Facebook</span><span>X / Twitter</span>
+      <span>TikTok</span><span>Vimeo</span><span>SoundCloud</span><span>+ 1000 more</span>
+    </div>
+  </header>
+
+  <div class="card">
+    <form id="form">
+      <input id="url" type="url" placeholder="Paste a video link here…" required autocomplete="off">
+      <button class="btn" id="go" type="submit">Get video</button>
+    </form>
+    <div class="row">
+      <button class="ghost" id="paste" type="button">📋 Paste</button>
+      <button class="ghost" id="clear" type="button">Clear</button>
+    </div>
+    <div id="msg" class="msg"></div>
+
+    <div id="result" class="result">
+      <div class="preview">
+        <img id="thumb" class="thumb" alt="" referrerpolicy="no-referrer">
+        <div>
+          <div id="title" class="title"></div>
+          <div id="meta" class="meta"></div>
+        </div>
+      </div>
+      <div class="tabs">
+        <button id="tab-mp4" class="active" type="button">🎬 Video (MP4)</button>
+        <button id="tab-mp3" type="button">🎵 Audio (MP3)</button>
+      </div>
+      <div id="opts" class="opts"></div>
+    </div>
+  </div>
+
+  <div class="card how">
+    <b>How to use</b>
+    <ol>
+      <li>Copy the link of the video from the app or website.</li>
+      <li>Paste it above and tap <b>Get video</b>.</li>
+      <li>Choose MP4 (video) or MP3 (audio) and a quality. The download starts automatically.</li>
+    </ol>
+  </div>
+
+  <footer>
+    Only download videos and music that you own or have permission to use.<br>
+    Private posts and DRM-protected content are not supported.
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let current = null, mode = "mp4";
+
+function showMsg(text, type = "err") {
+  const m = $("msg"); m.className = "msg " + type; m.innerHTML = text;
+}
+function hideMsg() { $("msg").className = "msg"; }
+function fmtTime(s) {
+  if (!s) return "";
+  s = Math.round(s);
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+  return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(sec).padStart(2, "0");
+}
+const LABELS = {2160: "4K", 1440: "2K", 1080: "Full HD", 720: "HD", 480: "SD", 360: "Low", 240: "Low", 144: "Lowest"};
+
+function renderOpts() {
+  const box = $("opts"); box.innerHTML = "";
+  $("tab-mp4").classList.toggle("active", mode === "mp4");
+  $("tab-mp3").classList.toggle("active", mode === "mp3");
+  let list;
+  if (mode === "mp4") {
+    const q = current.video_qualities || [];
+    list = q.length ? q.map(h => ({q: String(h), b: h + "p", s: LABELS[h] || ""}))
+                    : [{q: "best", b: "Best", s: "Best available"}];
+    if (!current.has_video) { box.innerHTML = '<div class="meta">This link has no video. Try the MP3 tab.</div>'; return; }
+  } else {
+    list = [{q: "320", b: "320 kbps", s: "Best quality"}, {q: "192", b: "192 kbps", s: "Standard"},
+            {q: "128", b: "128 kbps", s: "Smaller file"}];
+  }
+  for (const o of list) {
+    const btn = document.createElement("button");
+    btn.className = "opt"; btn.type = "button";
+    btn.innerHTML = `<b>${o.b}</b><small>${mode.toUpperCase()} · ${o.s}</small>`;
+    btn.onclick = () => startDownload(o.q, btn);
+    box.appendChild(btn);
+  }
+}
+
+async function startDownload(quality, btn) {
+  const params = new URLSearchParams({url: current.url, kind: mode, quality});
+  const label = btn.innerHTML;
+  document.querySelectorAll(".opt").forEach(b => b.classList.add("busy"));
+  btn.innerHTML = '<b><span class="spinner"></span>Preparing…</b><small>This can take a minute</small>';
+  showMsg("Preparing your file on the server. Longer videos take more time, please keep this page open.", "info");
+  try {
+    const res = await fetch("/api/download?" + params);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.detail || "Download failed.");
+    }
+    const blob = await res.blob();
+    const cd = res.headers.get("content-disposition") || "";
+    let name = (cd.match(/filename\*=utf-8''([^;]+)/i) || [])[1];
+    name = name ? decodeURIComponent(name) : ((cd.match(/filename="?([^";]+)/i) || [])[1] || "download." + mode);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    showMsg("✅ Done! Check your Downloads folder.", "info");
+  } catch (e) {
+    showMsg(e.message);
+  } finally {
+    btn.innerHTML = label;
+    document.querySelectorAll(".opt").forEach(b => b.classList.remove("busy"));
+  }
+}
+
+$("form").onsubmit = async (e) => {
+  e.preventDefault();
+  const url = $("url").value.trim();
+  if (!url) return;
+  const go = $("go");
+  go.disabled = true; go.innerHTML = '<span class="spinner"></span>Loading';
+  $("result").style.display = "none"; hideMsg();
+  try {
+    const res = await fetch("/api/info", {method: "POST", headers: {"Content-Type": "application/json"},
+                                         body: JSON.stringify({url})});
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.detail || "Could not read this link.");
+    current = {...j, url};
+    $("thumb").src = j.thumbnail || ""; $("thumb").style.display = j.thumbnail ? "" : "none";
+    $("title").textContent = j.title;
+    $("meta").textContent = [j.site, j.uploader, fmtTime(j.duration)].filter(Boolean).join(" · ");
+    mode = j.has_video ? "mp4" : "mp3";
+    renderOpts();
+    $("result").style.display = "block";
+  } catch (err) {
+    showMsg(err.message);
+  } finally {
+    go.disabled = false; go.textContent = "Get video";
+  }
+};
+$("tab-mp4").onclick = () => { mode = "mp4"; renderOpts(); };
+$("tab-mp3").onclick = () => { mode = "mp3"; renderOpts(); };
+$("clear").onclick = () => { $("url").value = ""; $("result").style.display = "none"; hideMsg(); $("url").focus(); };
+$("paste").onclick = async () => {
+  try { $("url").value = await navigator.clipboard.readText(); $("form").requestSubmit(); }
+  catch { showMsg("Couldn't read the clipboard. Long-press the box and choose Paste.", "info"); }
+};
+</script>
+</body>
+</html>
