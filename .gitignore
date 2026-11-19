@@ -1,3 +1,7 @@
 .venv/
 __pycache__/
 *.pyc
+cloudflare-settings.txt
+node_modules/
+.wrangler/
+.dev.vars

@@ -60,8 +60,9 @@
 
   chrome.runtime.onMessage.addListener((m) => {
     if (m.type !== "saveclip-status") return;
-    if (m.ok) setMsg("✅ Saved! Check your Downloads folder.", "ok");
-    else if (m.error === "NETWORK_FAILED") setMsg("Can't reach the SaveClip server. Is it running? Check the address in settings.", "err");
-    else setMsg("This one couldn't be downloaded (private post, unsupported link, or too big). Open the post itself and try again.", "err");
+    if (m.state === "progress") setMsg(m.progress > 0 && m.progress < 99 ? `Downloading… ${m.progress}%` : m.progress >= 99 ? "Converting…" : "Preparing…");
+    else if (m.state === "saving") setMsg("Saving to your Downloads…");
+    else if (m.state === "done") setMsg("✅ Saved! Check your Downloads folder.", "ok");
+    else if (m.state === "error") setMsg(m.error, "err");
   });
 })();

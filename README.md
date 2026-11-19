@@ -41,6 +41,11 @@ To stop the website, press **Ctrl + C** in the black window.
 
 ---
 
+## Put it online for free with Cloudflare
+
+See **[CLOUDFLARE.md](CLOUDFLARE.md)**: the website runs on a free Cloudflare Worker and the
+downloading happens on your own computer through a free Cloudflare Tunnel.
+
 ## Download button inside social media sites (computer)
 
 The `extension` folder is a Chrome / Edge extension that puts a small download button on the side of
@@ -53,7 +58,7 @@ Phone apps can't show a button from another app inside Instagram or YouTube, so 
 
 - **Android:** open your SaveClip link in Chrome → ⋮ menu → **Install app / Add to Home screen**.
   Now in Instagram, YouTube, TikTok etc. tap **Share → SaveClip** and the video opens ready to download.
-  (This needs the online https link from Render, not 127.0.0.1.)
+  (This needs your online https link, e.g. your workers.dev link, not 127.0.0.1.)
 - **iPhone:** open the link in Safari → Share → **Add to Home Screen**. In apps tap **Share → Copy link**,
   open SaveClip and tap **📋 Paste**.
 
@@ -107,6 +112,9 @@ pip install -U yt-dlp
 app.py              backend (FastAPI + yt-dlp + ffmpeg)
 static/index.html   the web page (installable on phones)
 extension/          Chrome / Edge side button
+wrangler.jsonc      Cloudflare Worker config (website + forwarding to your PC)
+cloudflare/         Cloudflare Worker code
+cloudflare_connect.py / start-cloudflare.bat   run on your PC + connect via Cloudflare Tunnel
 requirements.txt    Python packages
 start-windows.bat   one-click start for Windows
 start-mac-linux.sh  one-click start for Mac/Linux

@@ -180,28 +180,33 @@ function renderOpts() {
 }
 
 async function startDownload(quality, btn) {
-  const params = new URLSearchParams({url: current.url, kind: mode, quality});
   const label = btn.innerHTML;
+  const setBtn = (t) => { btn.innerHTML = `<b><span class="spinner"></span>${t}</b><small>Please keep this page open</small>`; };
   document.querySelectorAll(".opt").forEach(b => b.classList.add("busy"));
-  btn.innerHTML = '<b><span class="spinner"></span>Preparing…</b><small>This can take a minute</small>';
-  showMsg("Preparing your file on the server. Longer videos take more time, please keep this page open.", "info");
+  setBtn("Starting…");
+  showMsg("Preparing your file. Longer videos take more time.", "info");
   try {
-    const res = await fetch("/api/download?" + params);
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      throw new Error(j.detail || "Download failed.");
+    const res = await fetch("/api/jobs", {method: "POST", headers: {"Content-Type": "application/json"},
+                                         body: JSON.stringify({url: current.url, kind: mode, quality})});
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(j.detail || "Couldn't start the download.");
+    for (;;) {
+      await new Promise(r => setTimeout(r, 1500));
+      const sr = await fetch("/api/jobs/" + j.id, {cache: "no-store"});
+      const st = await sr.json().catch(() => ({}));
+      if (!sr.ok) throw new Error(st.detail || "Lost the download. Please try again.");
+      if (st.status === "error") throw new Error(st.error || "Download failed.");
+      if (st.status === "done") break;
+      setBtn(st.progress > 0 && st.progress < 99 ? `Downloading ${st.progress}%` :
+             st.progress >= 99 ? "Converting…" : "Preparing…");
     }
-    const blob = await res.blob();
-    const cd = res.headers.get("content-disposition") || "";
-    let name = (cd.match(/filename\*=utf-8''([^;]+)/i) || [])[1];
-    name = name ? decodeURIComponent(name) : ((cd.match(/filename="?([^";]+)/i) || [])[1] || "download." + mode);
+    // Let the browser download the finished file directly (works for big files too).
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob); a.download = name;
+    a.href = "/api/jobs/" + j.id + "/file";
     document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
     showMsg("✅ Done! Check your Downloads folder.", "info");
   } catch (e) {
-    showMsg(e.message);
+    showMsg(e.message === "Failed to fetch" ? "Can't reach the SaveClip server. Is your computer on and running SaveClip?" : e.message);
   } finally {
     btn.innerHTML = label;
     document.querySelectorAll(".opt").forEach(b => b.classList.remove("busy"));

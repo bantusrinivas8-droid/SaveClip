@@ -1,3 +1,5 @@
+> **Want it free on Cloudflare only?** Follow [CLOUDFLARE.md](CLOUDFLARE.md) instead.
+
 # Put SaveClip on the internet (free, step by step)
 
 ## Why Cloudflare Workers shows "404"

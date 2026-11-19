@@ -9,10 +9,15 @@ import re
 import shutil
 import socket
 import tempfile
+import threading
+import time
+import uuid
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 
 import yt_dlp
-from fastapi import FastAPI, HTTPException, Query, Response
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -25,6 +30,9 @@ MP3_BITRATES = {"128", "192", "320"}
 
 app = FastAPI(title="SaveClip")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# The browser extension and the Cloudflare-hosted page call this API from other origins.
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"],
+                   allow_headers=["Content-Type"], expose_headers=["Content-Disposition"])
 
 
 class InfoRequest(BaseModel):
@@ -109,18 +117,10 @@ def safe_name(title: str) -> str:
     return (name or "download")[:120]
 
 
-@app.get("/api/download")
-def download(
-    url: str,
-    kind: str = Query("mp4", pattern="^(mp4|mp3)$"),
-    quality: str = "best",
-):
-    url = check_url(url)
-    tmp = tempfile.mkdtemp(prefix="saveclip_")
+def build_opts(kind: str, quality: str, tmp: str) -> dict:
     opts = base_opts()
     opts["outtmpl"] = os.path.join(tmp, "%(title).100B.%(ext)s")
     opts["match_filter"] = yt_dlp.utils.match_filter_func(f"duration <=? {MAX_DURATION}")
-
     if kind == "mp3":
         bitrate = quality if quality in MP3_BITRATES else "192"
         opts["format"] = "bestaudio/best"
@@ -137,35 +137,129 @@ def download(
         opts["merge_output_format"] = "mp4"
         # Re-encode to MP4 only when the source isn't already MP4-compatible.
         opts["postprocessors"] = [{"key": "FFmpegVideoConvertor", "preferedformat": "mp4"}]
+    return opts
 
+
+def fetch_file(url: str, kind: str, quality: str, tmp: str, progress=None):
+    """Download + convert into tmp. Returns (path, filename). Raises HTTPException."""
+    opts = build_opts(kind, quality, tmp)
+    if progress:
+        opts["progress_hooks"] = [progress]
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
             if info.get("_type") == "playlist":
                 info = next((x for x in info.get("entries") or [] if x), info)
     except Exception as e:
-        shutil.rmtree(tmp, ignore_errors=True)
         raise HTTPException(400, friendly_error(e))
-
     want_ext = ".mp3" if kind == "mp3" else ".mp4"
     files = [f for f in os.listdir(tmp) if f.endswith(want_ext)]
     if not files:
-        shutil.rmtree(tmp, ignore_errors=True)
         raise HTTPException(400, "Download failed (file too big, too long, or not available).")
-    path = os.path.join(tmp, files[0])
-    filename = safe_name(info.get("title") or "download") + want_ext
-    return FileResponse(
-        path,
-        media_type="audio/mpeg" if kind == "mp3" else "video/mp4",
-        filename=filename,
-        background=BackgroundTask(shutil.rmtree, tmp, ignore_errors=True),
-    )
+    return os.path.join(tmp, files[0]), safe_name(info.get("title") or "download") + want_ext
+
+
+def media_type(kind: str) -> str:
+    return "audio/mpeg" if kind == "mp3" else "video/mp4"
+
+
+@app.get("/api/download")
+def download(
+    url: str,
+    kind: str = Query("mp4", pattern="^(mp4|mp3)$"),
+    quality: str = "best",
+):
+    """One-shot download (fine locally; behind Cloudflare use /api/jobs for long videos)."""
+    url = check_url(url)
+    tmp = tempfile.mkdtemp(prefix="saveclip_")
+    try:
+        path, filename = fetch_file(url, kind, quality, tmp)
+    except HTTPException:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise
+    return FileResponse(path, media_type=media_type(kind), filename=filename,
+                        background=BackgroundTask(shutil.rmtree, tmp, ignore_errors=True))
+
+
+# ---- Background jobs: start -> poll progress -> fetch file -------------------
+# Cloudflare closes requests that wait more than ~100 seconds for an answer, so
+# long videos are prepared in the background while the page polls for progress.
+
+JOB_TTL = 30 * 60
+JOBS: dict = {}
+JOBS_LOCK = threading.Lock()
+EXECUTOR = ThreadPoolExecutor(max_workers=int(os.getenv("MAX_PARALLEL_JOBS", "3")))
+
+
+class JobRequest(BaseModel):
+    url: str
+    kind: str = "mp4"
+    quality: str = "best"
+
+
+def cleanup_jobs():
+    now = time.time()
+    with JOBS_LOCK:
+        old = [k for k, j in JOBS.items() if now - j["created"] > JOB_TTL]
+        for k in old:
+            shutil.rmtree(JOBS.pop(k)["tmp"], ignore_errors=True)
+
+
+def run_job(job_id: str):
+    job = JOBS[job_id]
+    job["status"] = "working"
+
+    def hook(d):
+        if d.get("status") == "downloading":
+            total = d.get("total_bytes") or d.get("total_bytes_estimate")
+            if total:
+                job["progress"] = min(99, int(d.get("downloaded_bytes", 0) * 100 / total))
+        elif d.get("status") == "finished":
+            job["progress"] = 99
+
+    try:
+        path, filename = fetch_file(job["url"], job["kind"], job["quality"], job["tmp"], hook)
+        job.update(status="done", progress=100, path=path, filename=filename)
+    except HTTPException as e:
+        job.update(status="error", error=e.detail)
+    except Exception as e:  # never leave a job stuck in "working"
+        job.update(status="error", error=friendly_error(e))
+
+
+@app.post("/api/jobs")
+def create_job(req: JobRequest):
+    cleanup_jobs()
+    if req.kind not in ("mp4", "mp3"):
+        raise HTTPException(400, "Choose mp4 or mp3.")
+    url = check_url(req.url)
+    job_id = uuid.uuid4().hex
+    with JOBS_LOCK:
+        JOBS[job_id] = {"url": url, "kind": req.kind, "quality": req.quality or "best",
+                        "status": "queued", "progress": 0, "created": time.time(),
+                        "tmp": tempfile.mkdtemp(prefix="saveclip_")}
+    EXECUTOR.submit(run_job, job_id)
+    return {"id": job_id}
+
+
+@app.get("/api/jobs/{job_id}")
+def job_status(job_id: str):
+    job = JOBS.get(job_id)
+    if not job:
+        raise HTTPException(404, "This download expired. Please try again.")
+    return {"status": job["status"], "progress": job["progress"],
+            "error": job.get("error"), "filename": job.get("filename")}
+
+
+@app.get("/api/jobs/{job_id}/file")
+def job_file(job_id: str):
+    job = JOBS.get(job_id)
+    if not job or job["status"] != "done":
+        raise HTTPException(404, "This download isn't ready or has expired.")
+    return FileResponse(job["path"], media_type=media_type(job["kind"]), filename=job["filename"])
 
 
 @app.get("/api/health")
-def health(response: Response):
-    # Lets the browser extension's "Test" button check the server.
-    response.headers["Access-Control-Allow-Origin"] = "*"
+def health():
     return {"ok": True, "ffmpeg": bool(shutil.which("ffmpeg")), "yt_dlp": yt_dlp.version.__version__}
 
 

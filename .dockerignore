@@ -4,3 +4,8 @@ __pycache__
 *.zip
 start-*.bat
 start-*.sh
+cloudflare
+cloudflare_connect.py
+wrangler.jsonc
+node_modules
+.wrangler
