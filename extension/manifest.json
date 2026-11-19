@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "SaveClip – Video & MP3 Download Button",
+  "short_name": "SaveClip",
+  "version": "1.0.0",
+  "description": "Adds a small download button on YouTube, Instagram, Facebook, X, TikTok and more. Save the video as MP4 or the song as MP3 with your SaveClip server.",
+  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "action": { "default_title": "SaveClip settings", "default_popup": "options.html" },
+  "options_page": "options.html",
+  "background": { "service_worker": "background.js" },
+  "permissions": ["downloads", "storage"],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.youtube.com/*", "*://*.instagram.com/*", "*://*.facebook.com/*", "*://fb.watch/*",
+        "*://*.x.com/*", "*://x.com/*", "*://*.twitter.com/*", "*://*.tiktok.com/*",
+        "*://*.vimeo.com/*", "*://vimeo.com/*", "*://*.soundcloud.com/*", "*://soundcloud.com/*",
+        "*://*.dailymotion.com/*", "*://*.reddit.com/*", "*://*.twitch.tv/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+#saveclip-root { position: fixed; right: 0; top: 45%; z-index: 2147483646;
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #16181d; }
+#saveclip-root * { box-sizing: border-box; }
+#saveclip-fab { width: 44px; height: 44px; border: 0; border-radius: 12px 0 0 12px; cursor: pointer;
+  background: linear-gradient(135deg, #e5254a, #ff6a3d); box-shadow: 0 4px 14px rgba(0,0,0,.25);
+  display: flex; align-items: center; justify-content: center; transition: width .15s; padding: 0; }
+#saveclip-fab:hover { width: 52px; }
+#saveclip-fab svg { width: 22px; height: 22px; }
+#saveclip-panel { position: absolute; right: 56px; top: 50%; transform: translateY(-50%); width: 230px;
+  background: #fff; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 12px; display: none; }
+#saveclip-panel.open { display: block; }
+#saveclip-panel .sc-title { font-weight: 700; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+#saveclip-panel .sc-close { border: 0; background: none; cursor: pointer; font-size: 18px; color: #6b7080; padding: 0 4px; }
+#saveclip-panel .sc-row { display: flex; gap: 6px; margin-bottom: 6px; }
+#saveclip-panel select { flex: 1; padding: 7px; border: 1px solid #e3e5ec; border-radius: 8px; background: #f6f7fb; color: #16181d; font: inherit; }
+#saveclip-panel .sc-btn { flex: 1; padding: 9px 6px; border: 0; border-radius: 9px; cursor: pointer; font: inherit; font-weight: 600; color: #fff;
+  background: linear-gradient(90deg, #e5254a, #ff6a3d); }
+#saveclip-panel .sc-btn.mp3 { background: #16181d; }
+#saveclip-panel .sc-msg { font-size: 12px; color: #6b7080; margin-top: 6px; }
+#saveclip-panel .sc-msg.err { color: #d93636; }
+#saveclip-panel .sc-msg.ok { color: #18a058; }
+#saveclip-hide { position: absolute; top: -8px; left: -8px; width: 18px; height: 18px; border-radius: 50%; border: 0;
+  background: #16181d; color: #fff; font-size: 11px; line-height: 18px; cursor: pointer; display: none; padding: 0; }
+#saveclip-root:hover #saveclip-hide { display: block; }

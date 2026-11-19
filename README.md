@@ -41,6 +41,22 @@ To stop the website, press **Ctrl + C** in the black window.
 
 ---
 
+## Download button inside social media sites (computer)
+
+The `extension` folder is a Chrome / Edge extension that puts a small download button on the side of
+YouTube, Instagram, Facebook, X, TikTok and more. See [extension/README.md](extension/README.md).
+
+## On your phone
+
+Phone apps can't show a button from another app inside Instagram or YouTube, so SaveClip uses the
+**Share** menu instead:
+
+- **Android:** open your SaveClip link in Chrome → ⋮ menu → **Install app / Add to Home screen**.
+  Now in Instagram, YouTube, TikTok etc. tap **Share → SaveClip** and the video opens ready to download.
+  (This needs the online https link from Render, not 127.0.0.1.)
+- **iPhone:** open the link in Safari → Share → **Add to Home Screen**. In apps tap **Share → Copy link**,
+  open SaveClip and tap **📋 Paste**.
+
 ## Manual run (if you prefer typing commands)
 
 ```bash
@@ -89,7 +105,8 @@ pip install -U yt-dlp
 
 ```
 app.py              backend (FastAPI + yt-dlp + ffmpeg)
-static/index.html   the web page
+static/index.html   the web page (installable on phones)
+extension/          Chrome / Edge side button
 requirements.txt    Python packages
 start-windows.bat   one-click start for Windows
 start-mac-linux.sh  one-click start for Mac/Linux

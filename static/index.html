@@ -4,7 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SaveClip – Video & MP3 Downloader</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⬇️</text></svg>">
+<link rel="icon" href="/icon-192.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#e5254a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SaveClip">
 <style>
   :root {
     --bg: #f6f7fb; --card: #ffffff; --text: #16181d; --muted: #6b7080;
@@ -120,6 +125,15 @@
     </ol>
   </div>
 
+  <div class="card how" id="install-card">
+    <b>📱 Use it from Instagram, YouTube or TikTok on your phone</b>
+    <ol>
+      <li><b>Android (Chrome):</b> tap <b id="install-btn-wrap">⋮ menu → Add to Home screen / Install app</b>. Then in any app tap <b>Share → SaveClip</b> and the link opens here.</li>
+      <li><b>iPhone (Safari):</b> tap <b>Share → Add to Home Screen</b>. In apps, tap <b>Share → Copy link</b>, open SaveClip and tap <b>📋 Paste</b>.</li>
+    </ol>
+    <button class="btn" id="install-btn" type="button" hidden style="margin-top:10px">Install SaveClip app</button>
+  </div>
+
   <footer>
     Only download videos and music that you own or have permission to use.<br>
     Private posts and DRM-protected content are not supported.
@@ -226,6 +240,25 @@ $("paste").onclick = async () => {
   try { $("url").value = await navigator.clipboard.readText(); $("form").requestSubmit(); }
   catch { showMsg("Couldn't read the clipboard. Long-press the box and choose Paste.", "info"); }
 };
+
+// Links shared from other apps (Share → SaveClip) arrive as ?url= or inside ?text=
+(function handleShared() {
+  const q = new URLSearchParams(location.search);
+  const raw = [q.get("url"), q.get("text"), q.get("title")].filter(Boolean).join(" ");
+  const m = raw.match(/https?:\/\/\S+/);
+  if (m) {
+    $("url").value = m[0];
+    history.replaceState(null, "", "/");
+    $("form").requestSubmit();
+  }
+})();
+
+// "Install app" button on browsers that support it (Android Chrome, desktop Chrome/Edge)
+let installEvt = null;
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; $("install-btn").hidden = false; });
+$("install-btn").onclick = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; $("install-btn").hidden = true; };
+if (matchMedia("(display-mode: standalone)").matches) $("install-card").hidden = true;
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 </script>
 </body>
 </html>

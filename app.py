@@ -12,7 +12,7 @@ import tempfile
 from urllib.parse import urlparse
 
 import yt_dlp
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -163,7 +163,9 @@ def download(
 
 
 @app.get("/api/health")
-def health():
+def health(response: Response):
+    # Lets the browser extension's "Test" button check the server.
+    response.headers["Access-Control-Allow-Origin"] = "*"
     return {"ok": True, "ffmpeg": bool(shutil.which("ffmpeg")), "yt_dlp": yt_dlp.version.__version__}
 
 
